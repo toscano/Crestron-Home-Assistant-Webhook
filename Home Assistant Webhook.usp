@@ -1,0 +1,135 @@
+/*
+    Call a Home Assistant Webhook such as:
+
+        http://192.168.1.10:8123/api/webhook/-nVgY9Q1O47Y3sE3f3TJNEGu3Js
+
+    Parameters:
+        Host	 : Host name or IP address of Home Assistant
+        Port	 : Port to connect on. Some reasonable values are 80, 8123
+        WebhookId: In our example it's -nVgY9Q1O47Y3sE3f3TJNEGu3Js this comes from Home Assistant
+                   when building a Webhook Automation
+*/
+
+#PRINT_TO_TRACE
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#ENCODING_ASCII
+
+#DEFINE_CONSTANT debug 0
+
+STRING_INPUT _skip_, _skip_, _skip_, strJson_data[200];
+
+STRING_PARAMETER parHost[100];
+INTEGER_PARAMETER parPort;
+STRING_PARAMETER parWebhookId[200];
+
+TCP_CLIENT tcp_webhook_client[2000];
+
+STRING g_strBody[200];
+
+FUNCTION connect()
+{
+    SIGNED_INTEGER status_err, status_discnt;
+
+    status_err = SOCKETCONNECTCLIENT(tcp_webhook_client, parHost, parPort, 0);
+    if (debug)
+        print("Connection Status = %d", status_err);
+
+    if (status_err < 0)
+    {
+        print("Error: SocketConnectClient: Host(server name)");
+        if (debug)
+            print("Error: Attempting disconnect");
+
+        status_discnt = SOCKETDISCONNECTCLIENT(tcp_webhook_client);
+        if (debug)
+            print("Disconnect Status = %d", status_discnt);
+
+        g_strBody = "";
+    }
+}
+
+// Events
+CHANGE strJson_data
+{
+    g_strBody = strJson_data;
+
+    if (len(g_strBody))
+        connect();
+}
+
+SOCKETCONNECT tcp_webhook_client
+{
+    SIGNED_INTEGER status_err;
+    STRING sCMD[1000];
+    STRING sPOST[200];
+    STRING sHOST[200];
+    STRING sUSER[50];
+    STRING sACPT[50];
+    STRING sCONT[50];
+    STRING sLENH[50];
+
+    // > POST /api/webhook/-nVkY7J5MY3pF3I3TMAYGu3Js HTTP/1.1
+    MAKESTRING(sPOST, "POST /api/webhook/%s HTTP/1.1\r\n", parWebhookId);
+    if (debug)
+        print("->%s", sPOST);
+
+    // > Host: control.crosby.institute:8123
+    MAKESTRING(sHOST, "Host: %s:%d\r\n", parHost, parPort);
+    if (debug)
+        print("->%s", sHOST);
+
+    // > User-Agent: crestron/1.0.0
+    MAKESTRING(sUSER, "User-Agent: crestron/1.0.0\r\n");
+    if (debug)
+        print("->%s", sUSER);
+
+    // > Accept: */*
+    MAKESTRING(sACPT, "Accept: */*\r\n");
+    if (debug)
+        print("->%s", sACPT);
+
+    // > Content-Type: application/json
+    MAKESTRING(sCONT, "Content-Type: application/json\r\n");
+    if (debug)
+        print("->%s", sCONT);
+
+    // > Content-Length: 43
+    MAKESTRING(sLENH, "Content-Length: %d\r\n", len(g_strBody));
+    if (debug)
+        print("->%s", sLENH);
+
+    // Put that all together
+    MAKESTRING(sCMD, "%s%s%s%s%s%s\r\n%s", sPOST, sHOST, sUSER, sACPT, sCONT, sLENH, g_strBody);
+    status_err = SOCKETSEND(tcp_webhook_client, sCMD);
+    if (debug)
+        print("%d->%s", status_err, sCMD);
+}
+
+SOCKETRECEIVE tcp_webhook_client
+{
+    STRING sTemp_String[2000];
+    SIGNED_INTEGER status_discnt;
+
+    if (debug)
+    {
+        print("Received Len: %u", LEN(tcp_webhook_client.SocketRxBuf));
+        print("Received: %s", tcp_webhook_client.SocketRxBuf);
+    }
+
+    CLEARBUFFER(tcp_webhook_client.SocketRxBuf);
+
+    status_discnt = SOCKETDISCONNECTCLIENT(tcp_webhook_client);
+
+    if (debug)
+        print("Disconnect Status = %d", status_discnt);
+
+    g_strBody = "";
+}
+
+// Main
+Function Main()
+{
+    WaitForInitializationComplete();
+}
