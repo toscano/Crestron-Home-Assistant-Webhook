@@ -2,7 +2,7 @@
 Crestron SIMPL+ module for invoking a Home Assistant webhook with JSON arguments
 
 ### Installation
-Copy the two files `Home Assistant Webhook.usp` and `Home Assistant Webhook.ush` to your configured `SIMPL User Modules folder` (see: Options -> Preferences -> Directories ). The default location is `C:\Users\Public\Documents\Crestron\SIMPL\Usrmacro`.
+Copy the two files `Home Assistant Webhook.usp` and `Home Assistant Webhook.ush` to your configured `SIMPL User Modules folder` (see: Options -> Preferences -> Directories ). The default location is `C:\Users\Public\Documents\Crestron\SIMPL\Usrsplus`.
 
 ### Give us some love
 If you use this module in a Crestron project please give it a Star. :star:
